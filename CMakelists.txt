@@ -6,6 +6,7 @@ list(APPEND SOURCES db/builder.cc)
 list(APPEND SOURCES db/c.cc)
 list(APPEND SOURCES db/db_impl.cc)
 list(APPEND SOURCES db/db_iter.cc)
+list(APPEND SOURCES db/skiplist.h)
 list(APPEND SOURCES db/dbformat.cc)
 list(APPEND SOURCES db/filename.cc)
 list(APPEND SOURCES db/log_reader.cc)
@@ -63,6 +64,15 @@ if (WIN32)
 
     add_definitions(-DLEVELDB_PLATFORM_WINDOWS)
 endif()
+
+#file(GLOB SOURCES
+#        ${PROJECT_SOURCE_DIR}/util/*.cc
+#        ${PROJECT_SOURCE_DIR}/util/*.h
+#        ${PROJECT_SOURCE_DIR}/port/*.cc
+#        ${PROJECT_SOURCE_DIR}/port/*.h
+#        ${PROJECT_SOURCE_DIR}/db/*.cc
+#        ${PROJECT_SOURCE_DIR}/db/*.h
+#        ${PROJECT_SOURCE_DIR}/include/leveldb/*.h)
 
 add_library(leveldb ${SOURCES})
 

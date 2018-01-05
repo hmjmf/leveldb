@@ -4,27 +4,13 @@
 
 #include <iostream>
 #include <thread>
-#include <chrono>
 #include <future>
-#include <utility>
-#include <exception>
-#include <stdexcept>
-#include <string>
-#include <fcntl.h>
-#include <cassert>
-
-#include <cstdlib>
-#include <string>
-// 包含必要的头文件
 #include "leveldb/db.h"
 
 
 using namespace std;
 int main()
 {
-
-
-
     leveldb::DB      *db;
     leveldb::Options  options;
     options.create_if_missing = true;
@@ -34,8 +20,8 @@ int main()
     leveldb::Status status = leveldb::DB::Open(options,"/tmp/testdb", &db);
     assert(status.ok());
 
-    string key = "name";
-    string value = "chenqi";
+    string key = "k";
+    string value = "v";
 
     // write
     status = db->Put(leveldb::WriteOptions(), key, value);
@@ -60,6 +46,13 @@ int main()
 
     // close
     delete db;
+
+  std::atomic<int> x = 0;
+  std::atomic<int> y = 0;
+
+  auto r1 = y.load(std::memory_order::memory_order_relaxed);
+  x.store(r1, std::memory_order::memory_order_relaxed);
+  std::atomic
 
     return 0;
 }

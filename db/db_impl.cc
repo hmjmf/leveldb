@@ -115,34 +115,34 @@ Options SanitizeOptions(const std::string& dbname,
 }
 
 DBImpl::DBImpl(const Options& raw_options, const std::string& dbname)
-    : env_(raw_options.env),
-      internal_comparator_(raw_options.comparator),
-      internal_filter_policy_(raw_options.filter_policy),
+    : env_(raw_options.env),  //负责IO
+      internal_comparator_(raw_options.comparator),//比较器，比较key大小
+      internal_filter_policy_(raw_options.filter_policy),//过滤器（BloomFilter）
       options_(SanitizeOptions(dbname, &internal_comparator_,
-                               &internal_filter_policy_, raw_options)),
+                               &internal_filter_policy_, raw_options)),//修正错误opt
       owns_info_log_(options_.info_log != raw_options.info_log),
       owns_cache_(options_.block_cache != raw_options.block_cache),
       dbname_(dbname),
-      db_lock_(NULL),
-      shutting_down_(NULL),
-      bg_cv_(&mutex_),
-      mem_(NULL),
-      imm_(NULL),
-      logfile_(NULL),
+      db_lock_(NULL),//文件锁
+      shutting_down_(NULL),//原子指针（基于内存屏障 memory barrier）
+      bg_cv_(&mutex_),//多线程的锁
+      mem_(NULL),//memtable
+      imm_(NULL),// immemtable
+      logfile_(NULL),//log文件
       logfile_number_(0),
       log_(NULL),
       seed_(0),
-      tmp_batch_(new WriteBatch),
+      tmp_batch_(new WriteBatch),//以batch写入
       bg_compaction_scheduled_(false),
       manual_compaction_(NULL) {
-  has_imm_.Release_Store(NULL);
+  has_imm_.Release_Store(NULL); //用于判断是否有immemtable
 
   // Reserve ten files or so for other uses and give the rest to TableCache.
   const int table_cache_size = options_.max_open_files - kNumNonTableCacheFiles;
   table_cache_ = new TableCache(dbname_, &options_, table_cache_size);
-
+  //table_cache_ :SSTable查询缓存
   versions_ = new VersionSet(dbname_, &options_, table_cache_,
-                             &internal_comparator_);
+                             &internal_comparator_);//MVCC
 }
 
 DBImpl::~DBImpl() {
@@ -1488,15 +1488,15 @@ Status DB::Delete(const WriteOptions& opt, const Slice& key) {
 DB::~DB() { }
 
 Status DB::Open(const Options& options, const std::string& dbname,
-                DB** dbptr) {
-  *dbptr = NULL;
+                DB** dbptr) {// 工厂函数
+  *dbptr = NULL;// 设置结果默认值, 指针传值
 
   DBImpl* impl = new DBImpl(options, dbname);
-  impl->mutex_.Lock();
+  impl->mutex_.Lock();// 数据恢复时上锁, 禁止所有可能的后台任务
   VersionEdit edit;
   // Recover handles create_if_missing, error_if_exists
   bool save_manifest = false;
-  Status s = impl->Recover(&edit, &save_manifest);
+  Status s = impl->Recover(&edit, &save_manifest);// 读log恢复状态
   if (s.ok() && impl->mem_ == NULL) {
     // Create new log and a corresponding memtable.
     uint64_t new_log_number = impl->versions_->NewFileNumber();
@@ -1518,10 +1518,10 @@ Status DB::Open(const Options& options, const std::string& dbname,
     s = impl->versions_->LogAndApply(&edit, &impl->mutex_);
   }
   if (s.ok()) {
-    impl->DeleteObsoleteFiles();
-    impl->MaybeScheduleCompaction();
+    impl->DeleteObsoleteFiles();// 清理无用文件
+    impl->MaybeScheduleCompaction();// 有写入就有可能要compact
   }
-  impl->mutex_.Unlock();
+  impl->mutex_.Unlock();// 初始化完毕
   if (s.ok()) {
     assert(impl->mem_ != NULL);
     *dbptr = impl;
